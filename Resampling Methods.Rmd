@@ -1,0 +1,197 @@
+---
+title: "Resampling Methods"
+author: "Yogesh Y Patil"
+date: "`r Sys.Date()`"
+output: html_document
+---
+1) Use the following different validation set approaches to estimate the test error rate by
+fitting linear models to Auto data set. Consider mpg as response variable and
+horsepower as predictor variable.
+a) Use validation set approach by fitting polynomial regression of order 1 to 3. (Use
+set.seed(1) and set.seed(2) function to get different results)
+b) Use Leave-one-out Cross-validation (LOOCV) by fitting polynomial regression of
+order 1 to 10.
+c) Use k-fold Cross-validation by fitting polynomial regression of order 1 to 10 with k=5
+and 10.
+```{r}
+library(ISLR2)
+data(Auto)
+set.seed(1)
+train <- sample(392,196)
+lm.fit <- lm(mpg~horsepower, data = Auto,subset = train)
+mean((Auto$mpg-predict(lm.fit, Auto))[-train]^2)
+lm.fit2 <-lm(mpg~poly(horsepower, 2), data = Auto,subset = train)
+mean((Auto$mpg - predict(lm.fit2, Auto))[-train]^2)
+lm.fit3 <- lm(mpg~poly(horsepower, 3), data = Auto,subset = train)
+mean((Auto$mpg - predict(lm.fit3, Auto))[-train]^2)
+```
+```{r}
+set.seed(2)
+attach(Auto)
+train <- sample(392,196)
+lm.fit <- lm(mpg~horsepower, data = Auto,subset = train)
+mean((mpg-predict(lm.fit, Auto))[-train]^2)
+lm.fit2 <-lm(mpg~poly(horsepower, 2), data = Auto,subset = train)
+mean((mpg - predict(lm.fit2, Auto))[-train]^2)
+lm.fit3 <- lm(mpg~poly(horsepower, 3), data = Auto,subset = train)
+mean((mpg - predict(lm.fit3, Auto))[-train]^2)
+```
+loocv
+```{r}
+library(boot)
+glm.fit <- glm(mpg~horsepower,data=Auto)
+cv.err <- cv.glm(Auto,glm.fit)
+cv.err$delta
+```
+```{r}
+cv.error <- rep(0,10)
+for(i in 1:10){
+  glm.fit <- glm(mpg~poly(horsepower,i),data=Auto)
+cv.error[i] <- cv.glm(Auto,glm.fit)$delta[1]
+}
+cv.error
+
+```
+```{r}
+set.seed(1)
+cv.error.10 <- rep(0, 10)
+for (i in 1:10) {glm.fit <- glm(mpg~poly(horsepower, i), data = Auto)
+cv.error.10[i] <- cv.glm(Auto, glm.fit, K = 10)$delta[1]
+}
+cv.error.10
+```
+```{r}
+set.seed(1)
+cv.error.5 <- rep(0, 5)
+for (i in 1:5) {glm.fit <- glm(mpg~poly(horsepower, i), data = Auto)
+cv.error.5[i] <- cv.glm(Auto, glm.fit, K = 5)$delta[1]
+}
+cv.error.5
+
+```
+```{r}
+library(ISLR2)
+data("Portfolio")
+alpha.fn <- function(data,index){X <- data$X[index]
+Y <- data$Y[index]
+(var(Y)-cov(X,Y))/(var(X)+var(Y)-2*cov(X,Y))
+}
+```
+```{r}
+alpha.fn(Portfolio,1:100)
+```
+```{r}
+set.seed(7)
+alpha.fn(Portfolio,sample(100,100))
+```
+```{r}
+boot_ <- boot(Portfolio,alpha.fn,R=1000)
+names(boot_)
+help(boot)
+plot(boot_)
+hist(boot_$t)
+```
+
+```{r}
+library(ISLR2)
+data("Boston")
+attach(Boston)
+#a)
+mu_hat <- mean(medv)
+cat('The estimate for population mean is',mu_hat )
+#b)
+se_mu_hat <- sd(medv)/length(medv)
+cat('\nThe estimate for se of mu_hat is',se_mu_hat )
+#c)
+boot.fn <- function(data,index){
+  x <- data$medv[index]
+  mu_hat2 <- mean(x)
+  return(mu_hat2)
+}
+set.seed(1)
+library(boot)
+boot_ <- boot(Boston,boot.fn,1000)
+hist(boot_$t)
+plot(boot_)
+```
+```{r}
+#d)
+LL <- mu_hat-1.96*0.4106622
+UL <- mu_hat+1.96*0.4106622
+cat('95$ boostrap CI for population mean of medv is',c(LL,UL),'\n')
+
+```
+```{r}
+t.test(medv)
+cat('95 CI for population mean of medv using t.test',c(21.72953,23.33608),'\n')
+
+```
+E
+```{r}
+med.medv <- median(medv)
+cat('The estimate for population median is',med.medv )
+
+```
+```{r}
+rm(list=ls())
+#f)
+boot.fn <- function(data,index){
+  x <- data$medv[index]
+  mu_hat_median <- median(x)
+  return(mu_hat_median)
+}
+set.seed(1)
+library(boot)
+boot_ <- boot(Boston,boot.fn,1000)
+hist(boot_$t)
+plot(boot_)
+LL <- med.medv-1.96*0.3778075
+UL <- med.medv+1.96*0.3778075
+cat('95 CI for population median of medv using t.test',c(21.72953,23.33608),'\n')
+
+```
+```{r}
+x=0;med=0
+for (i in 1:1000) {
+  x <- sample(medv,replace=T)
+  med[i] <- median(x)
+}
+
+boostrap_median <- mean(med)
+boostrap_se_median <- sd(med);boostrap_se_median
+quantile(med,probs=c(0.025,0.975))
+
+```
+G
+```{r}
+boot.fn <- function(data,index){
+  x <- data$medv[index]
+  mu_0.1 <- quantile(x,0.1)
+  return(mu_0.1)
+}
+set.seed(1)
+library(boot)
+boot_ <- boot(Boston,boot.fn,1000)
+boot_
+```
+#Question 3
+a)
+```{r}
+attach(Default)
+lr.fit <- glm(default~income+balance,data=Default,family='binomial')
+summary(lr.fit)$coefficients[2:3,2]
+```
+b)
+```{r}
+boot.fn <- function(data,index){
+  default <- data$default[index]
+  income <- data$income[index]
+  balance <- data$balance[index]
+  lm.fit <- glm(default~income+balance,data=Default,family=binomial)
+  return(summary(lm.fit)$coefficients[2:3,1])
+}
+library(boot)
+b=boot(Default,boot.fn,1000)
+plot(b)
+```
+
